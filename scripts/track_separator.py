@@ -12,10 +12,10 @@ WAV_DIR = "data/raw_wav"
 CLIP_DIR = "data/raw_clips"
 SEPARATED_DIR = "data/separated_2stems"
 
-TARGET_SR = 44100        # 统一采样率（Spleeter 常见设置）
-TARGET_CHANNELS = 2      # 统一为双声道
-CLIP_SECONDS = 5         # 切片时长（秒）
-KEEP_TAIL_IF_SEC = 1.0   # 最后不足 5s 的尾部，若 ≥ 1s 则也保留
+TARGET_SR = 44100
+TARGET_CHANNELS = 2
+CLIP_SECONDS = 5
+KEEP_TAIL_IF_SEC = 1.0
 
 MODEL_SPEC = "spleeter:2stems"
 
@@ -51,7 +51,7 @@ def split_wav_to_clips(wav_path: Path, out_dir: Path,
     return stems
 
 def main():
-    genre = "jazz"
+    genre = "metal"
     au_files = sorted(list(Path(INPUT_DIR).glob(f"{genre}/*.au")))
     print(f"Found {len(au_files)} .au files in {INPUT_DIR}")
     
@@ -65,8 +65,7 @@ def main():
         else:
             print(f"Not found {wav_path}")
         wav_files.append(wav_path)
-        break
-    
+        
     print("Step B: Split 5s clips")
     (Path(CLIP_DIR) / genre).mkdir(parents=True, exist_ok=True)
     clip_files = []
@@ -74,15 +73,11 @@ def main():
         out_subdir = Path(CLIP_DIR) / genre
         parts = split_wav_to_clips(wav, out_subdir)
         clip_files.extend(parts)
-        break
 
     print("Step C: Separate 2 stems（vocals / accompaniment）")
     separator = Separator(MODEL_SPEC)
     for clip in tqdm(clip_files):
-        out_dir = Path(SEPARATED_DIR) / clip.stem
-        (Path(SEPARATED_DIR) / genre).mkdir(parents=True, exist_ok=True)
         separator.separate_to_file(str(clip), str(SEPARATED_DIR))
-
 
 
 if __name__ == "__main__":
