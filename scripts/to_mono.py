@@ -61,9 +61,9 @@ def main():
     out_base = Path(args.output)
 
     vocals_in = in_base / 'vocals'
-    accomp_in = in_base / 'accompaniment'
+    accomp_in = in_base / 'no_vocals'
     vocals_out = out_base / 'vocals'
-    accomp_out = out_base / 'accompaniment'
+    accomp_out = out_base / 'no_vocals'
 
     if not vocals_in.exists() or not accomp_in.exists():
         raise SystemExit(f"Input subdirectories not found: {vocals_in} / {accomp_in}")
