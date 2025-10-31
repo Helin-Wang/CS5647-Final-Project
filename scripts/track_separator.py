@@ -11,6 +11,7 @@ from pydub import AudioSegment
 import soundfile as sf
 import numpy as np
 from spleeter.separator import Separator
+
 INPUT_DIR = "data/raw"
 WAV_DIR = "data/raw_wav"
 CLIP_DIR = "data/raw_clips"
@@ -135,6 +136,9 @@ def main():
         out_subdir = Path(CLIP_DIR) / genre
         parts = split_wav_to_clips(wav, out_subdir, clip_len_sec=CLIP_SECONDS, keep_tail_if_sec=args.keep_tail_if_sec)
         clip_files.extend(parts)
+    
+    clip_files = sorted(list(Path(CLIP_DIR).glob(f"{genre}/*.wav")))
+    print(f"Found {len(clip_files)} clips in {CLIP_DIR}")
 
     # Step C: separation
     if args.method == "spleeter":
