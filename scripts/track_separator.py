@@ -115,30 +115,61 @@ def main():
     args = parser.parse_args()
 
     genre = args.genre
-    au_files = sorted(list(Path(INPUT_DIR).glob(f"{genre}/*.au")))
-    print(f"Found {len(au_files)} .au files in {INPUT_DIR}")
     
-    print("Step A: From .au to .wav")
-    (Path(WAV_DIR) / genre).mkdir(parents=True, exist_ok=True)
-    wav_files = []
-    for au in tqdm(au_files):
-        wav_path = Path(WAV_DIR) / genre / (au.stem + ".wav")
-        if au.exists():
-            au_to_wav(au, wav_path)
-        else:
-            print(f"Not found {wav_path}")
-        wav_files.append(wav_path)
+    # Check if clips already exist
+    clip_dir = Path(CLIP_DIR) / genre
+    existing_clips = sorted(list(clip_dir.glob("*.wav")))
+    
+    if existing_clips:
+        print(f"Found {len(existing_clips)} existing clips in {clip_dir}, skipping Step A and Step B")
+        clip_files = existing_clips
+    else:
+        # Check for existing wav files (in WAV_DIR or INPUT_DIR)
+        wav_dir_genre = Path(WAV_DIR) / genre
+        wav_files_from_wav_dir = sorted(list(wav_dir_genre.glob("*.wav"))) if wav_dir_genre.exists() else []
+        wav_files_from_input_dir = sorted(list(Path(INPUT_DIR).glob(f"{genre}/*.wav")))
         
-    print("Step B: Split 5s clips")
-    (Path(CLIP_DIR) / genre).mkdir(parents=True, exist_ok=True)
-    clip_files = []
-    for wav in tqdm(wav_files):
-        out_subdir = Path(CLIP_DIR) / genre
-        parts = split_wav_to_clips(wav, out_subdir, clip_len_sec=CLIP_SECONDS, keep_tail_if_sec=args.keep_tail_if_sec)
-        clip_files.extend(parts)
-    
-    clip_files = sorted(list(Path(CLIP_DIR).glob(f"{genre}/*.wav")))
-    print(f"Found {len(clip_files)} clips in {CLIP_DIR}")
+        if wav_files_from_wav_dir:
+            print(f"Found {len(wav_files_from_wav_dir)} existing .wav files in {wav_dir_genre}, skipping Step A")
+            wav_files = wav_files_from_wav_dir
+        elif wav_files_from_input_dir:
+            print(f"Found {len(wav_files_from_input_dir)} .wav files in {Path(INPUT_DIR) / genre}, skipping Step A")
+            wav_files = wav_files_from_input_dir
+        else:
+            # Step A: Convert .au to .wav
+            au_files = sorted(list(Path(INPUT_DIR).glob(f"{genre}/*.au")))
+            if not au_files:
+                raise FileNotFoundError(
+                    f"No audio files found! Expected .au or .wav files in:\n"
+                    f"  - {Path(INPUT_DIR) / genre}\n"
+                    f"  - {wav_dir_genre}"
+                )
+            print(f"Found {len(au_files)} .au files in {Path(INPUT_DIR) / genre}")
+            print("Step A: From .au to .wav")
+            wav_dir_genre.mkdir(parents=True, exist_ok=True)
+            wav_files = []
+            for au in tqdm(au_files):
+                wav_path = wav_dir_genre / (au.stem + ".wav")
+                if au.exists():
+                    au_to_wav(au, wav_path)
+                else:
+                    print(f"Warning: Not found {au}")
+                wav_files.append(wav_path)
+        
+        # Step B: Split wav files to clips
+        print("Step B: Split 5s clips")
+        clip_dir.mkdir(parents=True, exist_ok=True)
+        clip_files = []
+        for wav in tqdm(wav_files):
+            if wav.exists():
+                parts = split_wav_to_clips(wav, clip_dir, clip_len_sec=CLIP_SECONDS, keep_tail_if_sec=args.keep_tail_if_sec)
+                clip_files.extend(parts)
+            else:
+                print(f"Warning: WAV file not found: {wav}")
+        
+        # Re-read clips to ensure we have all files
+        clip_files = sorted(list(clip_dir.glob("*.wav")))
+        print(f"Found {len(clip_files)} clips in {clip_dir}")
 
     # Step C: separation
     if args.method == "spleeter":
